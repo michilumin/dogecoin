@@ -2871,7 +2871,8 @@ CAmount CWallet::GetMinimumFee(const CMutableTransaction& tx, unsigned int nTxBy
     // prevent user from paying a fee below minRelayTxFee or minTxFee
     // Dogecoin: Drop the smart fee estimate, use GetRequiredFee
     // nFeeNeeded = std::max(nFeeNeeded, GetRequiredFee(tx, nTxBytes));
-    nFeeNeeded = GetRequiredFee(tx, nTxBytes);
+    // mlumin: grab the simple fee for dogecoin
+    nFeeNeeded=GetSuchFeeRate().GetFee(nTxBytes);
     // But always obey the maximum
     if (nFeeNeeded > maxTxFee)
         nFeeNeeded = maxTxFee;

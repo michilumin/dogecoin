@@ -15,6 +15,8 @@
 #include "sendcoinsentry.h"
 #include "walletmodel.h"
 
+#include "dogecoin.h"
+
 #include "base58.h"
 #include "chainparams.h"
 #include "wallet/coincontrol.h"
@@ -177,7 +179,9 @@ void SendCoinsDialog::setModel(WalletModel *_model)
         // set the smartfee-sliders default value (wallets default conf.target or last stored value)
         QSettings settings;
         if (settings.value("nSmartFeeSliderPosition").toInt() == 0)
-            ui->sliderSmartFee->setValue(ui->sliderSmartFee->maximum() - model->getDefaultConfirmTarget() + 2);
+        // mlumin: max slider for dogecoin, 10 per?
+            //ui->sliderSmartFee->setValue(ui->sliderSmartFee->maximum() - model->getDefaultConfirmTarget() + 2);
+            ui->sliderSmartFee->setValue(ui->sliderSmartFee->minimum()+1);
         else
             ui->sliderSmartFee->setValue(settings.value("nSmartFeeSliderPosition").toInt());
     }
@@ -249,6 +253,11 @@ void SendCoinsDialog::on_sendButton_clicked()
 
     prepareStatus = model->prepareTransaction(currentTransaction, &ctrl);
 
+    //mlumin: actually make the tx fees do something now that the rate has been set by slider or entry
+    //mlumin: Using the model transaction because it's there but it looks like it wasn't fully used before?
+    currentTransaction.setTransactionFee(GetSuchFee(feeMultiplier,currentTransaction.getTransactionSize()));
+    txFee = currentTransaction.getTransactionFee();
+
     // process prepareStatus and on error generate message shown to user
     processSendCoinsReturn(prepareStatus,
         BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), currentTransaction.getTransactionFee()));
@@ -258,7 +267,15 @@ void SendCoinsDialog::on_sendButton_clicked()
         return;
     }
 
-    CAmount txFee = currentTransaction.getTransactionFee();
+   
+    /* mlumin debug: get rid of these.
+    printf("CurrFeeMult: %i\n",feeMultiplier);
+    printf("CurrTxSize: %i\n",currentTransaction.getTransactionSize());
+    printf("CurrTxFee: %i\n",GetSuchFee(feeMultiplier,currentTransaction.getTransactionSize()));
+    printf("RetrievedTxFee: %i\n",currentTransaction.getTransactionFee());
+    */
+
+ 
 
     // Format confirmation message
     QStringList formatted;
@@ -315,16 +332,19 @@ void SendCoinsDialog::on_sendButton_clicked()
     // add total amount in all subdivision units
     questionString.append("<hr />");
     CAmount totalAmount = currentTransaction.getTotalTransactionAmount() + txFee;
+
+    //mlumin: the alternative MDOGE and KDOGE measures are really confusing and messy for dogecoin. Kill?
+    /*
     QStringList alternativeUnits;
     Q_FOREACH(BitcoinUnits::Unit u, BitcoinUnits::availableUnits())
     {
         if(u != model->getOptionsModel()->getDisplayUnit())
             alternativeUnits.append(BitcoinUnits::formatHtmlWithUnit(u, totalAmount));
     }
+    */
     questionString.append(tr("Total Amount %1")
         .arg(BitcoinUnits::formatHtmlWithUnit(model->getOptionsModel()->getDisplayUnit(), totalAmount)));
-    questionString.append(QString("<span style='font-size:10pt;font-weight:normal;'><br />(=%2)</span>")
-        .arg(alternativeUnits.join(" " + tr("or") + "<br />")));
+    questionString.append(QString("<span style='font-size:10pt;font-weight:normal;'><br />(=%2)</span>"));
 
     SendConfirmationDialog confirmationDialog(tr("Confirm send coins"),
         questionString.arg(formatted.join("<br />")), SEND_CONFIRM_DELAY, this);
@@ -579,7 +599,7 @@ void SendCoinsDialog::on_buttonMinimizeFee_clicked()
 void SendCoinsDialog::setMinimumFee()
 {
     ui->radioCustomPerKilobyte->setChecked(true);
-    ui->customFee->setValue(CWallet::GetRequiredFee(1000));
+    ui->customFee->setValue(100000000);
 }
 
 void SendCoinsDialog::updateFeeSectionControls()
@@ -591,7 +611,8 @@ void SendCoinsDialog::updateFeeSectionControls()
     ui->labelFeeEstimation      ->setEnabled(ui->radioSmartFee->isChecked());
     ui->labelSmartFeeNormal     ->setEnabled(ui->radioSmartFee->isChecked());
     ui->labelSmartFeeFast       ->setEnabled(ui->radioSmartFee->isChecked());
-    ui->confirmationTargetLabel ->setEnabled(ui->radioSmartFee->isChecked());
+    //ui->confirmationTargetLabel ->setEnabled(ui->radioSmartFee->isChecked());
+    ui->confirmationTargetLabel ->setEnabled(0);
     ui->checkBoxMinimumFee      ->setEnabled(ui->radioCustomFee->isChecked());
     ui->labelMinFeeWarning      ->setEnabled(ui->radioCustomFee->isChecked());
     ui->radioCustomPerKilobyte  ->setEnabled(ui->radioCustomFee->isChecked() && !ui->checkBoxMinimumFee->isChecked());
@@ -603,8 +624,14 @@ void SendCoinsDialog::updateGlobalFeeVariables()
 {
     if (ui->radioSmartFee->isChecked())
     {
+        //mlumin: we aren't using nConfirmTarget but some controls still do, if we get rid of the label we can get rid of this.
         int nConfirmTarget = ui->sliderSmartFee->maximum() - ui->sliderSmartFee->value() + 2;
-        payTxFee = CFeeRate(0);
+        
+        //mlumin: CFeeRate won't work for dogecoin because it speaks in satoshis per kb.
+        //payTxFee = CFeeRate(0); 
+
+        //mlumin: re-update the fee multiplier here to be sure?
+        feeMultiplier=(ui->sliderSmartFee->maximum()-(ui->sliderSmartFee->maximum() - ui->sliderSmartFee->value()))+1;
 
         // set nMinimumTotalFee to 0 to not accidentally pay a custom fee
         CoinControlDialog::coinControl->nMinimumTotalFee = 0;
@@ -615,11 +642,26 @@ void SendCoinsDialog::updateGlobalFeeVariables()
     }
     else
     {
-        payTxFee = CFeeRate(ui->customFee->value());
-
+        //mlumin: CFeeRate won't work for dogecoin because it speaks in satoshis per kb.
+        //payTxFee = CFeeRate(0);
+  
         // if user has selected to set a minimum absolute fee, pass the value to coincontrol
         // set nMinimumTotalFee to 0 in case of user has selected that the fee is per KB
+
+        //mlumin: we need to set the multiplier to the content in the box that the user typed in.
+        //mlumin: Set the multiplier to 1 doge / kb (the minimum) if minimum fee checked.
+        //mlumin: for the box, make it only care about the first digit and have it talk in whole doge only, act as a multiplier.
         CoinControlDialog::coinControl->nMinimumTotalFee = ui->radioCustomAtLeast->isChecked() ? ui->customFee->value() : 0;
+        if (ui->radioCustomAtLeast->isChecked())
+        {
+            feeMultiplier=1;
+        }
+        else
+        {
+            feeMultiplier=(size_t)abs((ui->customFee->value()/100000000));
+        }
+    
+
     }
 }
 
@@ -640,7 +682,7 @@ void SendCoinsDialog::updateMinFeeLabel()
 {
     if (model && model->getOptionsModel())
         ui->checkBoxMinimumFee->setText(tr("Pay only the required fee of %1").arg(
-            BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), CWallet::GetRequiredFee(1000)) + "/kB")
+            BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(),GetSuchFee(1,1000)) + "/kB")
         );
 }
 
@@ -649,13 +691,20 @@ void SendCoinsDialog::updateSmartFeeLabel()
     if(!model || !model->getOptionsModel())
         return;
 
-    int nBlocksToConfirm = ui->sliderSmartFee->maximum() - ui->sliderSmartFee->value() + 2;
-    int estimateFoundAtBlocks = nBlocksToConfirm;
-    CFeeRate feeRate = mempool.estimateSmartFee(nBlocksToConfirm, &estimateFoundAtBlocks);
+    //int nSliderFeeMultiplier = ui->sliderSmartFee->maximum() - ui->sliderSmartFee->value();
+    //mlumin: simplify the slider a lot - just move it to report value as multiplier in UpdateGlobalFeeVariables().
+    //mlumin: the calculation for the variables. It hurts, tho.
+    feeMultiplier=(ui->sliderSmartFee->maximum()-(ui->sliderSmartFee->maximum() - ui->sliderSmartFee->value()))+1;
+
+    int estimateConfirmationIncrease = feeMultiplier;
+    //mlumin: Update this for dogecoin simplicity.
+    //mlumin: this should just return the 'rate' of 1 doge per 1kB, so that it never worries about trying to get smartfees.
+    CFeeRate feeRate=GetSuchFeeRate();
+
     if (feeRate <= CFeeRate(0)) // not enough data => minfee
     {
         ui->labelSmartFee->setText(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(),
-                                                                std::max(CWallet::fallbackFee.GetFeePerK(), CWallet::GetRequiredFee(1000))) + "/kB");
+                                                                std::max(CWallet::fallbackFee.GetFeePerK(), CWallet::GetRequiredFee(1000))) + "/kB0");
         ui->labelSmartFee2->show(); // (Smart fee not initialized yet. This usually takes a few blocks...)
         ui->labelFeeEstimation->setText("");
         ui->fallbackFeeWarningLabel->setVisible(true);
@@ -666,10 +715,11 @@ void SendCoinsDialog::updateSmartFeeLabel()
     }
     else
     {
-        ui->labelSmartFee->setText(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(),
-                                                                std::max(feeRate.GetFeePerK(), CWallet::GetRequiredFee(1000))) + "/kB");
+       
+        //mlumin: this is the slider display. Take out the max rate and bring in the doge
+        ui->labelSmartFee->setText(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(),GetSuchFee(feeMultiplier,1000)) + "/kB");
         ui->labelSmartFee2->hide();
-        ui->labelFeeEstimation->setText(tr("Estimated to begin confirmation within %n block(s).", "", estimateFoundAtBlocks));
+        ui->labelFeeEstimation->setText(tr("Estimated to confirm with %nx such fast than normal.", "", estimateConfirmationIncrease));
         ui->fallbackFeeWarningLabel->setVisible(false);
     }
 

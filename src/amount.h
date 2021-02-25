@@ -10,6 +10,7 @@
 
 #include <stdlib.h>
 #include <string>
+#include <cmath>
 
 /** Amount in satoshis (Can be negative) */
 typedef int64_t CAmount;

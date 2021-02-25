@@ -1113,7 +1113,7 @@
                      <item>
                       <widget class="QLabel" name="labelSmartFeeNormal">
                        <property name="text">
-                        <string>normal</string>
+                        <string>normal wow</string>
                        </property>
                       </widget>
                      </item>
@@ -1153,7 +1153,7 @@
                      <item>
                       <widget class="QLabel" name="labelSmartFeeFast">
                        <property name="text">
-                        <string>fast</string>
+                        <string>much fast wow</string>
                        </property>
                       </widget>
                      </item>

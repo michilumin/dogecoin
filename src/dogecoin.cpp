@@ -186,3 +186,18 @@ CAmount GetDogecoinDustFee(const std::vector<CTxOut> &vout, CFeeRate &baseFeeRat
 
     return nFee;
 }
+
+CAmount GetSuchFee(size_t feeMultiplier, size_t txBytes) //mlumin: This probably isn't the right place for this..
+{
+     //mlumin: super simple fee calc for dogecoin
+    CAmount nFee = 100000000*(feeMultiplier*(ceil(txBytes/1000.0f)));
+    return nFee;
+}
+
+//mlumin: dogecoin dumbfees
+CFeeRate GetSuchFeeRate()
+{
+    return CFeeRate(1); //dogecoin - tx size bytes/1000f rate is 1x getfee
+}
+
+

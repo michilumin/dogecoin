@@ -15,30 +15,15 @@ CFeeRate::CFeeRate(const CAmount& nFeePaid, size_t nBytes_)
     int64_t nSize = int64_t(nBytes_);
 
     if (nSize > 0)
-        nSatoshisPerK = nFeePaid * 1000 / nSize;
+        nSatoshisPerK = nFeePaid * nBytes_ / 1000.0f;
     else
         nSatoshisPerK = 0;
 }
 
 CAmount CFeeRate::GetFee(size_t nBytes_) const
 {
-    assert(nBytes_ <= uint64_t(std::numeric_limits<int64_t>::max()));
-    int64_t nSize = int64_t(nBytes_);
-
-    // Dogecoin: Round up to the nearest 1000 bytes so we get round tx fees
-    if (nSize % 1000 > 0) {
-        nSize = nSize + 1000 - (nSize % 1000);
-    }
-
-    CAmount nFee = nSatoshisPerK * nSize / 1000;
-
-    if (nFee == 0 && nSize != 0) {
-        if (nSatoshisPerK > 0)
-            nFee = CAmount(1);
-        if (nSatoshisPerK < 0)
-            nFee = CAmount(-1);
-    }
-
+    //mlumin: super simple fee calc for dogecoin
+    CAmount nFee = ((int)ceil(nBytes_/1000.0f));
     return nFee;
 }
 

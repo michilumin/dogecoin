@@ -28,6 +28,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <cmath>
 
 #include <boost/shared_ptr.hpp>
 #include <boost/thread.hpp>

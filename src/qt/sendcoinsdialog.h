@@ -59,6 +59,8 @@ private:
     Ui::SendCoinsDialog *ui;
     ClientModel *clientModel;
     WalletModel *model;
+    CAmount txFee; //mlumin: added to be accessible throughout... seems previous 'paytxfee' variable wasn't ever used?
+    size_t feeMultiplier; //mlumin: dogecoin fees should just work in units of 1 doge multiples, so this should be simple to use for slider purposes
     bool fNewRecipientAllowed;
     bool fFeeMinimized;
     const PlatformStyle *platformStyle;
