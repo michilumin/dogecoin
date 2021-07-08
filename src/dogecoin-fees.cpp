@@ -27,28 +27,6 @@ CAmount GetDogecoinWalletFee(size_t nBytes_)
     CAmount nFee=GetDogecoinWalletFeeRate().GetFee(nBytes_);
 }
 
-CAmount GetDogecoinWalletFeeWithDust(const CTransaction& tx, unsigned int nBytes)
-{
-    CFeeRate walletFeeRate=GetDogecoinWalletFeeRate();
-    //mlumin: get the staged or created tx from the send ui - not sure we need to lock mempool in this case.
-    {
-        LOCK(mempool.cs);//mlumin: do we need to lock the mempool when preparing to transmit a wallet tx? 
-        uint256 hash = tx.GetHash();
-        double dPriorityDelta = 0;
-        CAmount nFeeDelta = 0;
-        mempool.ApplyDeltas(hash, dPriorityDelta, nFeeDelta);
-        if (dPriorityDelta > 0 || nFeeDelta > 0)
-            return 0;
-    }
-
-    //mlumin: using walletfeerate here for accessibility and clarity, protest if you like pls
-    CAmount fee= walletFeeRate.GetFee(nBytes);
-    fee += GetDogecoinDustFee(tx.vout, walletFeeRate);
-
-    //mlumin 5/2021: No need to check here for maximum tx size ever possible. Just return the fee.
-    return fee;
-}
-
 //mlumin 5/2021: Establish a wallet rate of n koinu per kb.
 //mlumin: this is somewhat redundant to the globally exposed ::minWalletTxFee, but honestly I'd like to have both the rate and amount (with size) here
 CFeeRate GetDogecoinWalletFeeRate()

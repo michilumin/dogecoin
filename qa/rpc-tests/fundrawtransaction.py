@@ -516,8 +516,8 @@ class RawTransactionsTest(BitcoinTestFramework):
 
         #fund a tx with ~20 small inputs
         inputs = []
-        # Dogecoin: TX size rounding gives us a fee of 4 DOGE
-        outputs = {self.nodes[0].getnewaddress():15,self.nodes[0].getnewaddress():4}
+        # Dogecoin: TX size rounding gives us a fee of 0.1 DOGE. 20 - 15 - 0.1 = 4.9 DOGE change
+        outputs = {self.nodes[0].getnewaddress():15,self.nodes[0].getnewaddress():4.9}
         rawTx = self.nodes[1].createrawtransaction(inputs, outputs)
         fundedTx = self.nodes[1].fundrawtransaction(rawTx)
 
@@ -549,7 +549,7 @@ class RawTransactionsTest(BitcoinTestFramework):
         oldBalance = self.nodes[0].getbalance()
 
         inputs = []
-        outputs = {self.nodes[0].getnewaddress():15,self.nodes[0].getnewaddress():4}
+        outputs = {self.nodes[0].getnewaddress():15,self.nodes[0].getnewaddress():4.9}
         rawTx = self.nodes[1].createrawtransaction(inputs, outputs)
         fundedTx = self.nodes[1].fundrawtransaction(rawTx)
         fundedAndSignedTx = self.nodes[1].signrawtransaction(fundedTx['hex'])
@@ -557,7 +557,7 @@ class RawTransactionsTest(BitcoinTestFramework):
         self.sync_all()
         self.nodes[0].generate(1)
         self.sync_all()
-        assert_equal(oldBalance+Decimal('500019.00000000'), self.nodes[0].getbalance()) #19+block reward
+        assert_equal(oldBalance+Decimal('500019.90000000'), self.nodes[0].getbalance()) #19+block reward
 
         #####################################################
         # test fundrawtransaction with OP_RETURN and no vin #
