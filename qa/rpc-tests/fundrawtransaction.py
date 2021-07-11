@@ -516,8 +516,8 @@ class RawTransactionsTest(BitcoinTestFramework):
 
         #fund a tx with ~20 small inputs
         inputs = []
-        # Dogecoin: TX size rounding gives us a fee of 0.1 DOGE. 20 - 15 - 0.1 = 4.9 DOGE change
-        outputs = {self.nodes[0].getnewaddress():15,self.nodes[0].getnewaddress():4.9}
+        # Dogecoin: TX size rounding gives us a fee of 1 DOGE. 20 - 15 - 1 = 4 DOGE change
+        outputs = {self.nodes[0].getnewaddress():15,self.nodes[0].getnewaddress():4}
         rawTx = self.nodes[1].createrawtransaction(inputs, outputs)
         fundedTx = self.nodes[1].fundrawtransaction(rawTx)
 
@@ -549,7 +549,7 @@ class RawTransactionsTest(BitcoinTestFramework):
         oldBalance = self.nodes[0].getbalance()
 
         inputs = []
-        outputs = {self.nodes[0].getnewaddress():15,self.nodes[0].getnewaddress():4.9}
+        outputs = {self.nodes[0].getnewaddress():15,self.nodes[0].getnewaddress():4}
         rawTx = self.nodes[1].createrawtransaction(inputs, outputs)
         fundedTx = self.nodes[1].fundrawtransaction(rawTx)
         fundedAndSignedTx = self.nodes[1].signrawtransaction(fundedTx['hex'])
@@ -557,7 +557,7 @@ class RawTransactionsTest(BitcoinTestFramework):
         self.sync_all()
         self.nodes[0].generate(1)
         self.sync_all()
-        assert_equal(oldBalance+Decimal('500019.90000000'), self.nodes[0].getbalance()) #19+block reward
+        assert_equal(oldBalance+Decimal('500019.00000000'), self.nodes[0].getbalance()) #19+block reward
 
         #####################################################
         # test fundrawtransaction with OP_RETURN and no vin #
@@ -639,8 +639,10 @@ class RawTransactionsTest(BitcoinTestFramework):
         outputs = {self.nodes[3].getnewaddress() : 1}
         rawtx = self.nodes[3].createrawtransaction(inputs, outputs)
         result = self.nodes[3].fundrawtransaction(rawtx) # uses min_relay_tx_fee (set by settxfee)
-        result2 = self.nodes[3].fundrawtransaction(rawtx, {"feeRate": 2*min_relay_tx_fee})
-        result3 = self.nodes[3].fundrawtransaction(rawtx, {"feeRate": 10*min_relay_tx_fee})
+        # TODO: We massively scale up min_relay_tx_fee here as it's not the recommended fee in 1.14.4,
+        # but must be scaled back for 1.14.5
+        result2 = self.nodes[3].fundrawtransaction(rawtx, {"feeRate": 2000*min_relay_tx_fee})
+        result3 = self.nodes[3].fundrawtransaction(rawtx, {"feeRate": 10000*min_relay_tx_fee})
         result_fee_rate = result['fee'] * 1000 / round_tx_size(count_bytes(result['hex']))
         assert_fee_amount(result2['fee'], count_bytes(result2['hex']), 2 * result_fee_rate)
         assert_fee_amount(result3['fee'], count_bytes(result3['hex']), 10 * result_fee_rate)

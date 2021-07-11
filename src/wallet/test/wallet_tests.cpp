@@ -500,7 +500,7 @@ BOOST_AUTO_TEST_CASE(GetMinimumFee_test)
     CTxOut txout1(value, (CScript)vector<unsigned char>(24, 0));
     tx.vout.push_back(txout1);
 
-    int64_t nMinTxFee = COIN / 10;
+    int64_t nMinTxFee = COIN;
 
     BOOST_CHECK_EQUAL(CWallet::GetMinimumFee(tx, 250, 0, pool), nMinTxFee);
     BOOST_CHECK_EQUAL(CWallet::GetMinimumFee(tx, 1000, 0, pool), nMinTxFee);
@@ -517,7 +517,7 @@ BOOST_AUTO_TEST_CASE(GetMinimumFee_dust_test)
     tx.vout.push_back(txout1);
     tx.vout.push_back(txout2);
 
-    int64_t nMinTxFee = COIN / 10;
+    int64_t nMinTxFee = COIN;
 
     // Confirm dust penalty fees are added on
 
